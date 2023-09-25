@@ -1,0 +1,20 @@
+[package]
+name = "rl-replay-api"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+actix-web = "4.4.0"
+awc = {version="3.2.0", features = ["rustls-0_21"]}
+boxcars = "0.9.10"
+chrono = { version = "0.4.31", features = ["serde"] }
+log = "0.4.20"
+mime = "0.3.17"
+rustls = "0.21.7"
+serde = "1.0.188"
+simplelog = "0.12.1"
+subtr-actor = {git="https://github.com/rlrml/subtr-actor.git", branch = "works_with_spectators"}
+uuid = { version = "1.4.1", features = ["v4"] }
+webpki-roots = "0.25.2"
