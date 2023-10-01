@@ -1,9 +1,18 @@
-use actix_web::*;
+use std::{path::PathBuf, fs};
+
+use actix_web::{*, http::Error};
 use actix_web::dev::Payload;
 use futures_util::*;
-use actix_multipart::Multipart;
+use actix_multipart::{form::{MultipartForm, tempfile::TempFile}, Multipart};
 use awc::Client;
-use crate::{models::replay::Replay, repository::database::Database};
+use serde_with::SerializeAs;
+use crate::{models::{replay::Replay, remote_defs::BallFrameDef}, repository::database::Database};
+
+#[derive(MultipartForm)]
+pub struct Upload {
+    file: TempFile,
+}
+
 
 /*
 Upload replay file as a single part named file using multipart/form-data. 
@@ -11,63 +20,47 @@ This API returns 201 on success (with the id of the created replay) or 409 in ca
 */
 #[post("/replays")]
 pub async fn put_replay(
-    mut payload: Multipart, request: HttpRequest) -> impl Responder {
-    // 10 MB
-    const MAX_FILE_SIZE: u64 = 1024 * 1024 * 10;
+    form: MultipartForm<Upload>) -> Result<HttpResponse, Error> {
+    const MAX_FILE_SIZE: u64 = 1024 * 1024 * 10; // 10 MB
     const MAX_FILE_COUNT: i32 = 1;
 
-    // detect malformed requests
-    let content_length: u64 = match request.headers().get("content-length") {
-        Some(header_value) => header_value.to_str().unwrap_or("0").parse().unwrap_or(0),
-        None => 0,
-    };
-
-    // reject malformed requests
-    match content_length {
-        0 => return HttpResponse::BadRequest().finish(),
-        length if length > MAX_FILE_SIZE => {
-            return HttpResponse::BadRequest()
-                .body(format!("The uploaded file is too large. Maximum size is {} bytes.", MAX_FILE_SIZE));
+    match form.file.size {
+        0 => Err("The file size is zero."),
+        length if length as u64 > MAX_FILE_SIZE => {
+            Err("The uploaded file is too large. Maximum size is {} bytes.")
         },
-        _ => {}
+    };
+    
+    let data = std::fs::read(form.file.file.path()).unwrap();
+    let replay = boxcars::ParserBuilder::new(&data)
+    .must_parse_network_data()
+    .on_error_check_crc()
+    .parse();
+
+    let parsed_replay = 
+    subtr_actor::ReplayDataCollector::new()
+        .get_replay_data(&replay.unwrap())
+        .unwrap();
+
+    let temp_file_path = form.file.file.path();
+    let file_name: &str = form
+        .file
+        .file_name
+        .as_ref()
+        .map(|m| m.as_ref())
+        .unwrap_or("null");
+
+    let mut file_path = PathBuf::from("./output/");
+    //file_path.push(&sanitize_filename::sanitize(&file_name));
+
+    match std::fs::rename(temp_file_path, file_path) {
+        Err(f) => f,
     };
 
-    let mut file_count = 0;
-
-    while let Some(mut field) = payload.try_next().await.unwrap_or(None) {
-        if let Some(filename) = field.content_disposition().get_filename() {
-            if file_count == MAX_FILE_COUNT {
-                return HttpResponse::BadRequest().body(format!(
-                    "Too many files uploaded. Maximum count is {}.", MAX_FILE_COUNT
-                ));
-            }
-            let replay = boxcars::ParserBuilder::new(&field)
-        .must_parse_network_data()
-        .on_error_check_crc()
-        .parse()?;
-    let data = subtr_actor::ReplayDataCollector::new()
-        .get_replay_data(&replay);
-        println!("{}", data.get_frame_data().balldata)
-            file_count += 1;
-        }
-    }
-
-    if file_count != 1 {
-        return HttpResponse::BadRequest().body("Exactly one file must be uploaded.");
-    }
-
-    HttpResponse::Ok().finish()
+    Ok(HttpResponse::Ok().json(&parsed_replay))
 }
 
-/* 
-#[post("/replays")]
-pub async fn create_replay(db: Data<Database>, new_replay: Json<Replay>) -> HttpResponse {
-    let replay = db.create_replay(new_replay.into_inner());
-    match replay {
-        Ok(replay) => HttpResponse::Ok().json(replay),
-        Err(err) => HttpResponse::InternalServerError().body(err.to_string()),
-    }
-}*/
+
 
 
 pub fn config(cfg: &mut web::ServiceConfig) {

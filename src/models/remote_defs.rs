@@ -1,10 +1,12 @@
-use serde_as::*;
+use serde_with::*;
+use subtr_actor::{BallFrame, BallData};
+use boxcars::RigidBody;
 
-#[derive(serde::Serialize, serde::Deserialize)]
-#[serde(remote = "BallFrame")]
+#[derive(serde::Serialize)]
+#[serde(remote = "BallFrame", untagged)]
 pub enum BallFrameDef {
     Empty,
-    Data { rigid_body: boxcars::RigidBody },
+    Data { rigid_body: RigidBody },
 }
 
 impl SerializeAs<BallFrame> for BallFrameDef {
@@ -15,3 +17,5 @@ impl SerializeAs<BallFrame> for BallFrameDef {
         BallFrameDef::serialize(value, serializer)
     }
 }
+
+
