@@ -1,9 +1,6 @@
 #![feature(hash_set_entry)]
-use boxcars::*;
+use rl_replay_api::stat_collector::StatCollector;
 use serde::{Deserialize, Serialize};
-use subtr_actor::*;
-
-use workspace::stat_collector::StatCollector;
 
 fn main() {
     let data = std::fs::read("C:/Users/jtd/repos/rust/advanced-stat-parser-2/gg.replay").unwrap();
@@ -15,7 +12,7 @@ fn main() {
 
     let collector = StatCollector::new();
     println!("collecting replay data");
-    let replay_data = collector.get_stat_data(&replay).unwrap();
+    let replay_data = collector.analyze(&replay).unwrap();
     println!("done");
     println!("{}", serde_json::to_string_pretty(&replay_data).unwrap());
 }

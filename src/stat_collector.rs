@@ -1,11 +1,10 @@
+use crate::model::{player::*, pickup::PickupHandler};
 use std::rc::Rc;
-use crate::{model::{player::Player, player::PlayerData, replay::ReplayData}, pickup::PickupHandler};
 use subtr_actor::{Collector, ReplayProcessor, SubtrActorResult, TimeAdvance};
 
 pub struct StatCollector {
     player_data: PlayerData,
     pickup_map: Rc<PickupHandler>,
-    has_printed: bool
 }
 
 impl StatCollector {
@@ -13,7 +12,6 @@ impl StatCollector {
         Self {
             player_data: PlayerData::new(),
             pickup_map: Rc::new(PickupHandler::new()),
-            has_printed: false
         }
     }
 
@@ -27,29 +25,23 @@ impl StatCollector {
                 .update_stats(processor);
         }
     }
-    
-    pub fn get_player_data(self) -> PlayerData {
-        self.player_data
-    }
 
     fn init_players(&mut self, processor: &mut ReplayProcessor) {
         processor.process_long_enough_to_get_actor_ids().unwrap();
         self.player_data.players.extend(
             processor
                 .iter_player_ids_in_order()
-                .map(|id| Player::new_from_processor(&processor, id, Rc::clone(&self.pickup_map)))
+                .map(|id| Player::new_from_processor(&processor, id, Rc::clone(&self.pickup_map))),
         );
 
         processor.reset();
     }
 
-    pub fn get_stat_data(mut self, replay: &boxcars::Replay) -> SubtrActorResult<ReplayData> {
+    pub fn analyze(mut self, replay: &boxcars::Replay) -> SubtrActorResult<PlayerData> {
         let mut processor = ReplayProcessor::new(replay)?;
         self.init_players(&mut processor);
         processor.process(&mut self)?;
-        Ok(ReplayData {
-            player_data: self.get_player_data(),
-        })
+        Ok(self.player_data)
     }
 }
 
@@ -62,14 +54,7 @@ impl Collector for StatCollector {
         current_time: f32,
     ) -> SubtrActorResult<TimeAdvance> {
         self.update_player_stats(&processor);
-        
         self.pickup_map.update(current_time);
-
-        if self.has_printed == false {
-            self.has_printed = true;
-            println!("{}", serde_json::to_string_pretty(&processor.get_replay_meta().unwrap()).unwrap());
-        }
-
         Ok(TimeAdvance::NextFrame)
     }
 }

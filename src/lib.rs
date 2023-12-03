@@ -1,8 +1,7 @@
-pub mod model;
-pub mod stat_collector;
-
 pub use crate::model::*;
-pub use crate::stat_collector::*;
+
+pub mod stat_collector;
+pub mod model;
 
 #[cfg(test)]
 mod tests {

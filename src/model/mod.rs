@@ -1,7 +1,7 @@
-pub mod boost;
-pub mod location;
 pub mod player;
 pub mod replay;
+pub mod boost;
 pub mod core;
+pub mod location;
 pub mod pickup;
-pub mod movement;
+
