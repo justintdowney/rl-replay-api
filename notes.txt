@@ -1,0 +1,4 @@
+Separate Model from game tracking logic i.e. implement from for PlayerRep for game to Player in model
+PositionHandler and PickupHandler are done two different ways? 
+iterating over positions instead of allowing players to update positions
+pickuphandler allows players to try to pickup

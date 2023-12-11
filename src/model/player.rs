@@ -1,6 +1,7 @@
-use std::rc::Rc;
-
-use crate::{pickup::PickupHandler, boost::Boost, core::Core};
+use crate::{
+    model::stats::{boost::Boost, location::Location, movement::Movement, Stat},
+    stat_collector::{PickupHandler, PositionHandler},
+};
 use serde::Serialize;
 use subtr_actor::{PlayerId, ReplayProcessor};
 
@@ -25,36 +26,51 @@ impl PlayerData {
     }
 }
 
+#[derive(Serialize, Copy, Clone)]
+pub enum Team {
+    Zero,
+    One,
+}
+
 #[derive(Serialize)]
 pub struct Player {
     pub name: String,
+    pub team: Team,
     pub id: PlayerId,
-    pub stats: Vec<Box<dyn Stat>>
+    pub stats: Vec<Box<dyn Stat>>,
 }
 
 impl Player {
     //can pass in processor to allow each stat to calculate in its own way
-    pub fn new_from_processor(processor: &ReplayProcessor, _id: &PlayerId, pickup_map: Rc<PickupHandler>) -> Self {
+    pub fn new_from_processor(processor: &ReplayProcessor, id: &PlayerId) -> Self {
         Player {
-            name: processor.get_player_name(_id).unwrap(),
-            id: _id.clone(),
+            name: processor.get_player_name(id).unwrap(),
+            id: id.clone(),
+            team: match processor.get_player_is_team_0(id).unwrap() {
+                true => Team::Zero,
+                false => Team::One,
+            },
             stats: vec![
-                Box::new(Boost::new(pickup_map)),
-/*                 Box::new(Core::new()),
+                Box::new(Boost::new()),
                 Box::new(Location::new()),
-                Box::new(Movement::new()) */
-            ]
+                Box::new(Movement::new()),
+            ],
         }
     }
 
-    pub fn update_stats(&mut self, processor: &ReplayProcessor) {
+    pub fn update_stats(
+        &mut self,
+        processor: &ReplayProcessor,
+        pickup_map: &mut PickupHandler,
+        position_handler: &PositionHandler,
+    ) {
         self.stats
-        .iter_mut()
-        .for_each(|x| x.update(processor, &self.id));
+            .iter_mut()
+            .map(|x| x.update(processor, pickup_map, position_handler, &self.id))
+            .collect()
     }
-}
 
-#[typetag::serde]
-pub trait Stat {
-    fn update(&mut self, processor: &ReplayProcessor, player_id: &PlayerId);
+    pub fn get_stats(&self) -> &Vec<Box<dyn Stat>> {
+        &self.stats
+    }
 }
