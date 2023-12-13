@@ -1,12 +1,12 @@
 mod tests {
-    use crate::constants::{LARGE_BOOST_PADS, SMALL_BOOST_PADS};
-    use crate::stat_collector::PickupMap;
-    use crate::util::BoostPadSize;
     use boxcars::{Quaternion, RigidBody, Vector3f};
+    use rl_replay_api::constants::{LARGE_BOOST_PADS, SMALL_BOOST_PADS};
+    use rl_replay_api::stat_collector::PickupHandler;
+    use rl_replay_api::util::BoostPickupEvent;
 
     #[test]
     fn detect_small_boost_pickup() {
-        let mut pickup_map = PickupMap::new();
+        let mut pickup_map = PickupHandler::new();
         let rb = RigidBody {
             sleeping: false,
             location: Vector3f {
@@ -24,12 +24,12 @@ mod tests {
             angular_velocity: None,
         };
         let result = pickup_map.try_pickup(&rb);
-        assert!(result == Some(BoostPadSize::Small));
+        assert!(result == BoostPickupEvent::Small);
     }
 
     #[test]
     fn detect_large_boost_pickup() {
-        let mut pickup_map = PickupMap::new();
+        let mut pickup_map = PickupHandler::new();
         let rb = RigidBody {
             sleeping: false,
             location: Vector3f {
@@ -47,12 +47,12 @@ mod tests {
             angular_velocity: None,
         };
         let result = pickup_map.try_pickup(&rb);
-        assert!(result == Some(BoostPadSize::Large));
+        assert!(result == BoostPickupEvent::Large);
     }
 
     #[test]
     fn detect_no_boost_pickup() {
-        let mut pickup_map = PickupMap::new();
+        let mut pickup_map = PickupHandler::new();
         let rb = RigidBody {
             sleeping: false,
             location: Vector3f {
@@ -70,6 +70,6 @@ mod tests {
             angular_velocity: None,
         };
         let result = pickup_map.try_pickup(&rb);
-        assert!(result == None);
+        assert!(result == BoostPickupEvent::None);
     }
 }

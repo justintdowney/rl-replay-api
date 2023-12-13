@@ -9,6 +9,7 @@ pub const SMALL_BOOST_PICKUP_AMOUNT: f32 = 30.6;
 pub const LARGE_BOOST_PICKUP_AMOUNT: f32 = 255.0;
 pub const BOOST_COOLDOWN: f32 = 5.00;
 pub const BOOST_PER_FRAME: f32 = 1.12;
+pub const STARTING_BOOST_VALUE: f32 = 84.15;
 
 /// Geometry related constants
 pub const CAR_HEIGHT_ON_GROUND: f32 = 20.0;
@@ -19,14 +20,15 @@ pub const BALL_SIZE: f32 = 92.75;
 pub const BALL_GROUND_HEIGHT: u32 = 95;
 pub const CAR_GROUND: u32 = 20;
 pub const GOAL_HEIGHT: u32 = 840;
-pub const MAP_Y: u32 = 10280;
-pub const MAP_X: u32 = 8200;
-pub const MAP_Z: u32 = 2050;
-pub const GOAL_X: u32 = 1792;
-pub const GOAL_Y: u32 = 900;
-pub const GOAL_Z: u32 = 640;
-pub const MAP_THIRD: f32 = MAP_Y as f32 / 6.0;
-pub const NEUTRAL_ZONE: f32 = MAP_Y as f32 / 20.0;
+pub const MAP_Y: u32 = 10240;
+pub const MAP_X: u32 = 8192;
+pub const MAP_Z: u32 = 2044;
+pub const GOAL_X: u32 = 1786;
+pub const GOAL_Y: u32 = 880;
+pub const GOAL_Z: f32 = 642.775;
+pub const MAP_THIRD: f32 = MAP_Y as f32 / 3.0;
+pub const MAP_SIXTH: f32 = MAP_THIRD / 2.0;
+pub const BACK_WALL: f32 = 5120.0;
 
 /// Small boost pad definitions by in-game location
 pub static SMALL_BOOST_PADS: [BoostPad; 28] = [

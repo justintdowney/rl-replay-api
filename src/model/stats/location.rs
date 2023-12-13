@@ -1,8 +1,10 @@
-use crate::constants::{MAP_THIRD, MAP_Y};
+use crate::constants::{BACK_WALL, MAP_SIXTH, MAP_THIRD, MAP_Y};
+use crate::model::player::Team;
 use crate::model::stats::Stat;
-use crate::stat_collector::{PickupHandler, PositionHandler};
+use crate::stat_collector::{PickupHandler, PlayerFrame, PlayerPayload};
+use boxcars::RigidBody;
 use serde::{Deserialize, Serialize};
-use subtr_actor::{PlayerId, ReplayProcessor};
+use subtr_actor::PlayerId;
 
 /// `Location` models & encapsulates location related statistics for each player
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -32,19 +34,50 @@ impl Location {
             frames_farthest_back: 0,
         }
     }
+
+    fn update_team_stats(&mut self, player_rb: &RigidBody) {
+        if player_rb.location.y > 0.0 {
+            self.frames_defensive_half += 1;
+        } else {
+            self.frames_offensive_half += 1;
+        }
+
+        if player_rb.location.y > BACK_WALL - MAP_SIXTH {
+            self.frames_offensive_third += 1;
+        } else if player_rb.location.y < -BACK_WALL + MAP_SIXTH {
+            self.frames_defensive_third += 1;
+        } else if player_rb.location.y > -(MAP_THIRD / 2.0)
+            && player_rb.location.y < (MAP_THIRD / 2.0)
+        {
+            self.frames_neutral_third += 1;
+        }
+    }
+
+    fn update_location_stats(&mut self, player_frame: &PlayerFrame) {
+        if let Some(player_rb) = player_frame.rigid_body {
+            if player_frame.team == Team::Zero {
+                self.update_team_stats(&player_rb);
+            } else if player_frame.team == Team::One {
+                self.update_team_stats(&player_rb);
+            }
+        }
+    }
 }
 
 #[typetag::serde]
 impl Stat for Location {
     fn update(
         &mut self,
-        processor: &ReplayProcessor,
-        pickup_handler: &mut PickupHandler,
-        position_handler: &PositionHandler,
+        player_payload: &PlayerPayload,
+        _pickup_handler: &mut PickupHandler,
         player_id: &PlayerId,
     ) {
-        if let Ok(rb) = processor.get_player_rigid_body(player_id) {
-            
+        if let Some(player_frame) = player_payload.get(player_id) {
+            self.update_location_stats(player_frame);
+
+            for (candidate_player_id, candidate_frame) in player_payload.frames.iter() {
+                if let Some(candidate_player_rb) = candidate_frame.rigid_body {}
+            }
         }
     }
 }

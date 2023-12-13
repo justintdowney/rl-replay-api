@@ -1,9 +1,9 @@
-use crate::constants::{BOOST_PER_FRAME, LARGE_BOOST_PICKUP_AMOUNT, SMALL_BOOST_PICKUP_AMOUNT};
+use crate::constants::{BOOST_PER_FRAME, SMALL_BOOST_PICKUP_AMOUNT, STARTING_BOOST_VALUE};
 use crate::model::stats::Stat;
-use crate::stat_collector::{PickupHandler, PositionHandler};
-use crate::util::BoostPadSize;
+use crate::stat_collector::{PickupHandler, PlayerFrame, PlayerPayload};
+use crate::util::BoostPickupEvent;
 use serde::{Deserialize, Serialize};
-use subtr_actor::{PlayerId, ReplayProcessor};
+use subtr_actor::PlayerId;
 
 /// `Boost` models the boost stats that are generated during processing
 #[derive(Serialize, Deserialize)]
@@ -20,6 +20,8 @@ pub struct Boost {
     large_boost_pickups: u32,
     overfill_total: f32, // remainder of pickup when pickup exceeds max boost amount
     overfill_stolen: f32,
+    #[serde(skip)]
+    most_recent_boost_value: f32,
 }
 
 impl Boost {
@@ -37,6 +39,57 @@ impl Boost {
             large_boost_pickups: 0,
             overfill_total: 0.0,
             overfill_stolen: 0.0,
+            most_recent_boost_value: STARTING_BOOST_VALUE,
+        }
+    }
+
+    fn update_boost_amount_stats(
+        &mut self,
+        boost_amount: f32,
+        player_frame: &PlayerFrame,
+        pickup_handler: &mut PickupHandler,
+    ) {
+        if player_frame.boost_active {
+            self.total_usage += BOOST_PER_FRAME;
+            self.frames_active += 1;
+        }
+
+        match boost_amount {
+            amt if amt > 0.0 && amt <= 63.75 => self.frames_0_25_boost += 1,
+            amt if amt > 63.76 && amt <= 127.5 => self.frames_25_50_boost += 1,
+            amt if amt > 127.51 && amt <= 191.25 => self.frames_50_75_boost += 1,
+            amt if amt > 191.26 && amt <= 255.0 => self.frames_75_100_boost += 1,
+            _ => {}
+        }
+
+        match boost_amount {
+            amt if amt == 0.0 => self.frames_0_boost += 1,
+            amt if amt == 255.0 => self.frames_100_boost += 1,
+            _ => {}
+        }
+
+        if let Some(player_rb) = player_frame.rigid_body {
+            if self.most_recent_boost_value >= boost_amount {
+                self.most_recent_boost_value = boost_amount;
+                return;
+            }
+
+            let pickup_result = pickup_handler.try_pickup(&player_rb);
+            match pickup_result {
+                BoostPickupEvent::Small => {
+                    self.small_boost_pickups += 1;
+                    if boost_amount + SMALL_BOOST_PICKUP_AMOUNT > 255.0 {
+                        self.overfill_total += (boost_amount + SMALL_BOOST_PICKUP_AMOUNT) - 255.0;
+                    }
+                }
+                BoostPickupEvent::Large => {
+                    self.large_boost_pickups += 1;
+                    if boost_amount > 0.0 {
+                        self.overfill_total += boost_amount;
+                    }
+                }
+                BoostPickupEvent::None => return,
+            }
         }
     }
 }
@@ -45,52 +98,13 @@ impl Boost {
 impl Stat for Boost {
     fn update(
         &mut self,
-        processor: &ReplayProcessor,
+        player_payload: &PlayerPayload,
         pickup_handler: &mut PickupHandler,
-        position_handler: &PositionHandler,
         player_id: &PlayerId,
     ) {
-        let boost_active = processor.get_boost_active(player_id).unwrap_or(0) % 2 == 1;
-        if boost_active {
-            self.total_usage += BOOST_PER_FRAME;
-            self.frames_active += 1;
-        }
-
-        if let Ok(current_boost) = processor.get_player_boost_level(player_id) {
-            if current_boost >= 0.0 && current_boost <= 63.75 {
-                self.frames_0_25_boost += 1;
-            } else if current_boost > 63.75 && current_boost <= 127.5 {
-                self.frames_25_50_boost += 1;
-            } else if current_boost > 127.5 && current_boost <= 191.25 {
-                self.frames_50_75_boost += 1;
-            } else if current_boost > 191.25 && current_boost <= 255.0 {
-                self.frames_75_100_boost += 1;
-            }
-
-            if current_boost == 0.0 {
-                self.frames_0_boost += 1;
-            } else if current_boost == 255.0 {
-                self.frames_100_boost += 1;
-            }
-
-            if let Ok(player_rb) = processor.get_player_rigid_body(player_id) {
-                if let Some(pad_size) = pickup_handler.try_pickup(player_rb) {
-                    match pad_size {
-                        BoostPadSize::Small => {
-                            self.small_boost_pickups += 1;
-                            if current_boost + SMALL_BOOST_PICKUP_AMOUNT > 255.0 {
-                                self.overfill_total +=
-                                    (current_boost + SMALL_BOOST_PICKUP_AMOUNT) - 255.0;
-                            }
-                        }
-                        BoostPadSize::Large => {
-                            self.large_boost_pickups += 1;
-                            if current_boost > 0.0 {
-                                self.overfill_total += current_boost;
-                            }
-                        }
-                    }
-                }
+        if let Some(player_frame) = player_payload.get(player_id) {
+            if let Some(boost_amount) = player_frame.boost_amount {
+                self.update_boost_amount_stats(boost_amount, player_frame, pickup_handler);
             }
         }
     }

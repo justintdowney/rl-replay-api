@@ -2,20 +2,121 @@ use crate::constants::{
     BOOST_COOLDOWN, LARGE_BOOST_HEIGHT, LARGE_BOOST_PADS, LARGE_BOOST_RADIUS, SMALL_BOOST_HEIGHT,
     SMALL_BOOST_PADS, SMALL_BOOST_RADIUS,
 };
+
+use crate::model::player::Team;
 use crate::{
     model::player::{Player, PlayerData},
-    util::{BoostPad, BoostPadSize},
+    util::{BoostPad, BoostPickupEvent},
 };
 use boxcars::RigidBody;
 use std::collections::HashMap;
 use subtr_actor::{Collector, PlayerId, ReplayProcessor, SubtrActorResult, TimeAdvance};
+
+#[derive(Clone, Copy)]
+pub struct PlayerFrame {
+    pub team: Team,
+    pub rigid_body: Option<boxcars::RigidBody>,
+    pub boost_amount: Option<f32>,
+    pub boost_active: bool,
+    pub jump_active: bool,
+    pub double_jump_active: bool,
+    pub dodge_active: bool,
+}
+
+impl PlayerFrame {
+    fn new_from_processor(
+        processor: &ReplayProcessor,
+        player_id: &PlayerId,
+        current_time: f32,
+    ) -> Self {
+        let rigid_body = processor
+            .get_interpolated_player_rigid_body(player_id, current_time, 0.0)
+            .ok();
+
+        let team = match processor.get_player_is_team_0(player_id).unwrap() {
+            true => Team::Zero,
+            false => Team::One,
+        };
+
+        let boost_amount = processor.get_player_boost_level(player_id).ok();
+        let boost_active = processor.get_boost_active(player_id).unwrap_or(0) % 2 == 1;
+        let jump_active = processor.get_jump_active(player_id).unwrap_or(0) % 2 == 1;
+        let double_jump_active = processor.get_double_jump_active(player_id).unwrap_or(0) % 2 == 1;
+        let dodge_active = processor.get_dodge_active(player_id).unwrap_or(0) % 2 == 1;
+
+        Self {
+            team,
+            rigid_body,
+            boost_amount,
+            boost_active,
+            jump_active,
+            double_jump_active,
+            dodge_active,
+        }
+    }
+}
+
+pub struct PlayerPayload {
+    pub frames: HashMap<PlayerId, PlayerFrame>,
+    pub ball_frame: Option<BallFrame>,
+}
+
+impl PlayerPayload {
+    pub fn new() -> Self {
+        Self {
+            frames: HashMap::new(),
+            ball_frame: None,
+        }
+    }
+
+    pub fn load_payload(&mut self, processor: &ReplayProcessor, current_time: f32) {
+        for player_id in processor.iter_player_ids_in_order() {
+            self.add_frame(
+                player_id.clone(),
+                PlayerFrame::new_from_processor(processor, &player_id, current_time),
+            );
+        }
+
+        self.ball_frame = Some(BallFrame::new_from_processor(processor));
+    }
+
+    pub fn add_frame(&mut self, player_id: PlayerId, player_frame: PlayerFrame) {
+        self.frames.insert(player_id, player_frame);
+    }
+
+    pub fn get(&self, player_id: &PlayerId) -> Option<&PlayerFrame> {
+        self.frames.get(player_id)
+    }
+
+    pub fn clear(&mut self) {
+        self.frames.clear();
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.frames.is_empty()
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct BallFrame {
+    pub rigid_body: Option<boxcars::RigidBody>,
+}
+
+impl BallFrame {
+    fn new_from_processor(processor: &ReplayProcessor) -> Self {
+        let rigid_body = processor.get_ball_rigid_body().ok();
+        Self {
+            rigid_body: rigid_body.copied(),
+        }
+    }
+}
 
 /// StatCollector model:
 /// For implementation of Collector<T> provided by subtr_actor.
 pub struct StatCollector {
     player_data: PlayerData,
     pickup_map: PickupHandler,
-    position_handler: PositionHandler,
+    player_payload: PlayerPayload,
 }
 
 impl StatCollector {
@@ -23,7 +124,7 @@ impl StatCollector {
         Self {
             player_data: PlayerData::new(),
             pickup_map: PickupHandler::new(),
-            position_handler: PositionHandler::new(),
+            player_payload: PlayerPayload::new(),
         }
     }
 
@@ -68,14 +169,15 @@ impl Collector for StatCollector {
         _frame_number: usize,
         current_time: f32,
     ) -> SubtrActorResult<TimeAdvance> {
+        self.player_payload.load_payload(processor, current_time);
+
         for player in self.player_data.players.iter_mut() {
-            player.update_stats(processor, &mut self.pickup_map, &self.position_handler);
-            if let Ok(player_rb) = processor.get_player_rigid_body(&player.id) {
-                self.position_handler.update(&player.id, player_rb);
-            }
+            player.update_stats(&self.player_payload, &mut self.pickup_map);
         }
 
         self.pickup_map.update(current_time);
+        self.player_payload.clear();
+
         Ok(TimeAdvance::NextFrame)
     }
 }
@@ -106,21 +208,21 @@ impl PickupHandler {
     /// # Returns
     ///
     /// * `bool` - true if the pickup was successful, or false if not
-    pub fn try_pickup(&mut self, player_rb: &RigidBody) -> Option<BoostPadSize> {
+    pub fn try_pickup(&mut self, player_rb: &RigidBody) -> BoostPickupEvent {
         if let Some(small_boost_pad) = self.check_small_pad_collision(player_rb) {
             if !self.disabled_boost_pads.contains_key(small_boost_pad) {
                 self.disabled_boost_pads
                     .insert(small_boost_pad.clone(), self.current_time);
-                return Some(BoostPadSize::Small);
+                return BoostPickupEvent::Small;
             }
         } else if let Some(large_boost_pad) = self.check_large_pad_collision(player_rb) {
             if !self.disabled_boost_pads.contains_key(large_boost_pad) {
                 self.disabled_boost_pads
                     .insert(large_boost_pad.clone(), self.current_time);
-                return Some(BoostPadSize::Large);
+                return BoostPickupEvent::Large;
             }
         }
-        None
+        BoostPickupEvent::None
     }
 
     fn check_large_pad_collision(&self, rb: &RigidBody) -> Option<&BoostPad> {
@@ -150,33 +252,8 @@ impl PickupHandler {
     /// * `current_time` - the current time in the replay
     pub fn update(&mut self, current_time: f32) {
         self.current_time = current_time;
+
         self.disabled_boost_pads
             .retain(|_, initial_time| current_time - *initial_time < BOOST_COOLDOWN);
-    }
-}
-
-pub struct PositionHandler {
-    player_positions: HashMap<PlayerId, RigidBody>,
-}
-
-impl PositionHandler {
-    pub fn new() -> Self {
-        Self {
-            player_positions: HashMap::new(),
-        }
-    }
-
-    pub fn get_player_positions(&self) -> &HashMap<PlayerId, RigidBody> {
-        &self.player_positions
-    }
-
-    pub fn update(&mut self, player_id: &PlayerId, player_rb: &RigidBody) {
-        // should not have magic number i.e. 6, player_count
-        if self.player_positions.len() > 6 as usize {
-            self.player_positions.clear();
-        }
-
-        self.player_positions
-            .insert(player_id.clone(), player_rb.clone());
     }
 }

@@ -29,9 +29,10 @@ impl PartialEq for BoostPad {
 impl Eq for BoostPad {}
 
 #[derive(PartialEq)]
-pub enum BoostPadSize {
-    Large,
+pub enum BoostPickupEvent {
+    None,
     Small,
+    Large,
 }
 
 pub enum GameMode {

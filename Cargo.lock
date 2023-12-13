@@ -275,6 +275,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d77f7ec81a6d05a3abb01ab6eb7590f6083d08449fe5a1c8b1e620283546ccb7"
 
 [[package]]
+name = "iai"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "71a816c97c42258aa5834d07590b718b4c9a598944cd39a52dc25b351185d678"
+
+[[package]]
 name = "inventory"
 version = "0.3.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -593,6 +599,7 @@ version = "0.1.0"
 dependencies = [
  "boxcars",
  "criterion",
+ "iai",
  "phf",
  "relative-path",
  "serde",

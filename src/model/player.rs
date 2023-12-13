@@ -1,9 +1,11 @@
 use crate::{
-    model::stats::{boost::Boost, location::Location, movement::Movement, Stat},
-    stat_collector::{PickupHandler, PositionHandler},
+    model::stats::{boost::Boost, Stat},
+    stat_collector::{PickupHandler, PlayerPayload},
 };
 use serde::Serialize;
 use subtr_actor::{PlayerId, ReplayProcessor};
+
+use super::stats::{location::Location, movement::Movement};
 
 #[derive(Serialize)]
 pub struct PlayerData {
@@ -26,7 +28,7 @@ impl PlayerData {
     }
 }
 
-#[derive(Serialize, Copy, Clone)]
+#[derive(PartialEq, Serialize, Copy, Clone)]
 pub enum Team {
     Zero,
     One,
@@ -58,19 +60,10 @@ impl Player {
         }
     }
 
-    pub fn update_stats(
-        &mut self,
-        processor: &ReplayProcessor,
-        pickup_map: &mut PickupHandler,
-        position_handler: &PositionHandler,
-    ) {
+    pub fn update_stats(&mut self, player_payload: &PlayerPayload, pickup_map: &mut PickupHandler) {
         self.stats
             .iter_mut()
-            .map(|x| x.update(processor, pickup_map, position_handler, &self.id))
+            .map(|x| x.update(player_payload, pickup_map, &self.id))
             .collect()
-    }
-
-    pub fn get_stats(&self) -> &Vec<Box<dyn Stat>> {
-        &self.stats
     }
 }
