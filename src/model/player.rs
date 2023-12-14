@@ -1,6 +1,7 @@
 use crate::{
     model::stats::{boost::Boost, Stat},
-    stat_collector::{PickupHandler, PlayerPayload},
+    payload::Payload,
+    stat_collector::PickupHandler,
 };
 use serde::Serialize;
 use subtr_actor::{PlayerId, ReplayProcessor};
@@ -60,10 +61,10 @@ impl Player {
         }
     }
 
-    pub fn update_stats(&mut self, player_payload: &PlayerPayload, pickup_map: &mut PickupHandler) {
+    pub fn update_stats(&mut self, payload: &mut Payload) {
         self.stats
             .iter_mut()
-            .map(|x| x.update(player_payload, pickup_map, &self.id))
+            .map(|x| x.update(payload, &self.id))
             .collect()
     }
 }

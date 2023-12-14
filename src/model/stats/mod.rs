@@ -2,15 +2,10 @@ pub mod boost;
 pub mod location;
 pub mod movement;
 
-use crate::stat_collector::{PickupHandler, PlayerPayload};
-use subtr_actor::{PlayerId};
+use crate::payload::Payload;
+use subtr_actor::PlayerId;
 
 #[typetag::serde]
 pub trait Stat {
-    fn update(
-        &mut self,
-        player_payload: &PlayerPayload,
-        pickup_handler: &mut PickupHandler,
-        player_id: &PlayerId,
-    );
+    fn update(&mut self, payload: &mut Payload, player_id: &PlayerId);
 }

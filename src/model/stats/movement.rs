@@ -2,7 +2,8 @@ use std::collections::HashMap;
 
 use crate::constants::CAR_HEIGHT_ON_GROUND;
 use crate::model::stats::Stat;
-use crate::stat_collector::{PickupHandler, PlayerPayload};
+use crate::payload::Payload;
+use crate::stat_collector::PickupHandler;
 use boxcars::RigidBody;
 use serde::{Deserialize, Serialize};
 use subtr_actor::PlayerId;
@@ -91,13 +92,8 @@ impl Movement {
 
 #[typetag::serde]
 impl Stat for Movement {
-    fn update(
-        &mut self,
-        player_payload: &PlayerPayload,
-        _pickup_handler: &mut PickupHandler,
-        player_id: &PlayerId,
-    ) {
-        if let Some(player_frame) = player_payload.get(player_id) {
+    fn update(&mut self, payload: &mut Payload, player_id: &PlayerId) {
+        /*if let Some(player_frame) = player_payload.get(player_id) {
             if let Some(player_rb) = player_frame.rigid_body {
                 if let Some(lin_vel) = player_rb.linear_velocity {
                     let speed = self.calculate_speed(lin_vel);
@@ -107,6 +103,6 @@ impl Stat for Movement {
                 self.update_distance_stats(&player_rb);
                 self.update_height_stats(player_rb.location.z);
             }
-        }
+        }*/
     }
 }

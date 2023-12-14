@@ -3,7 +3,7 @@ use crate::constants::{
     SMALL_BOOST_PADS, SMALL_BOOST_RADIUS,
 };
 
-use crate::model::player::Team;
+use crate::payload::{Payload, PayloadDataType, PlayerFrame, PlayerFrameData};
 use crate::{
     model::player::{Player, PlayerData},
     util::{BoostPad, BoostPickupEvent},
@@ -12,111 +12,11 @@ use boxcars::RigidBody;
 use std::collections::HashMap;
 use subtr_actor::{Collector, PlayerId, ReplayProcessor, SubtrActorResult, TimeAdvance};
 
-#[derive(Clone, Copy)]
-pub struct PlayerFrame {
-    pub team: Team,
-    pub rigid_body: Option<boxcars::RigidBody>,
-    pub boost_amount: Option<f32>,
-    pub boost_active: bool,
-    pub jump_active: bool,
-    pub double_jump_active: bool,
-    pub dodge_active: bool,
-}
-
-impl PlayerFrame {
-    fn new_from_processor(
-        processor: &ReplayProcessor,
-        player_id: &PlayerId,
-        current_time: f32,
-    ) -> Self {
-        let rigid_body = processor
-            .get_interpolated_player_rigid_body(player_id, current_time, 0.0)
-            .ok();
-
-        let team = match processor.get_player_is_team_0(player_id).unwrap() {
-            true => Team::Zero,
-            false => Team::One,
-        };
-
-        let boost_amount = processor.get_player_boost_level(player_id).ok();
-        let boost_active = processor.get_boost_active(player_id).unwrap_or(0) % 2 == 1;
-        let jump_active = processor.get_jump_active(player_id).unwrap_or(0) % 2 == 1;
-        let double_jump_active = processor.get_double_jump_active(player_id).unwrap_or(0) % 2 == 1;
-        let dodge_active = processor.get_dodge_active(player_id).unwrap_or(0) % 2 == 1;
-
-        Self {
-            team,
-            rigid_body,
-            boost_amount,
-            boost_active,
-            jump_active,
-            double_jump_active,
-            dodge_active,
-        }
-    }
-}
-
-pub struct PlayerPayload {
-    pub frames: HashMap<PlayerId, PlayerFrame>,
-    pub ball_frame: Option<BallFrame>,
-}
-
-impl PlayerPayload {
-    pub fn new() -> Self {
-        Self {
-            frames: HashMap::new(),
-            ball_frame: None,
-        }
-    }
-
-    pub fn load_payload(&mut self, processor: &ReplayProcessor, current_time: f32) {
-        for player_id in processor.iter_player_ids_in_order() {
-            self.add_frame(
-                player_id.clone(),
-                PlayerFrame::new_from_processor(processor, &player_id, current_time),
-            );
-        }
-
-        self.ball_frame = Some(BallFrame::new_from_processor(processor));
-    }
-
-    pub fn add_frame(&mut self, player_id: PlayerId, player_frame: PlayerFrame) {
-        self.frames.insert(player_id, player_frame);
-    }
-
-    pub fn get(&self, player_id: &PlayerId) -> Option<&PlayerFrame> {
-        self.frames.get(player_id)
-    }
-
-    pub fn clear(&mut self) {
-        self.frames.clear();
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.frames.is_empty()
-    }
-}
-
-#[derive(Clone, Copy)]
-pub struct BallFrame {
-    pub rigid_body: Option<boxcars::RigidBody>,
-}
-
-impl BallFrame {
-    fn new_from_processor(processor: &ReplayProcessor) -> Self {
-        let rigid_body = processor.get_ball_rigid_body().ok();
-        Self {
-            rigid_body: rigid_body.copied(),
-        }
-    }
-}
-
 /// StatCollector model:
 /// For implementation of Collector<T> provided by subtr_actor.
 pub struct StatCollector {
     player_data: PlayerData,
     pickup_map: PickupHandler,
-    player_payload: PlayerPayload,
 }
 
 impl StatCollector {
@@ -124,7 +24,6 @@ impl StatCollector {
         Self {
             player_data: PlayerData::new(),
             pickup_map: PickupHandler::new(),
-            player_payload: PlayerPayload::new(),
         }
     }
 
@@ -169,14 +68,23 @@ impl Collector for StatCollector {
         _frame_number: usize,
         current_time: f32,
     ) -> SubtrActorResult<TimeAdvance> {
-        self.player_payload.load_payload(processor, current_time);
+        let mut payload = Payload::new();
+
+        let mut player_frames = PlayerFrameData::new();
+        for player in self.player_data.players.iter() {
+            player_frames.add_frame(
+                &player.id,
+                &PlayerFrame::new_from_processor(processor, &player.id, current_time),
+            )
+        }
+        payload.add_data(PayloadDataType::Player(player_frames));
+        payload.add_data(PayloadDataType::Pickup(&mut self.pickup_map));
 
         for player in self.player_data.players.iter_mut() {
-            player.update_stats(&self.player_payload, &mut self.pickup_map);
+            player.update_stats(&mut payload);
         }
 
         self.pickup_map.update(current_time);
-        self.player_payload.clear();
 
         Ok(TimeAdvance::NextFrame)
     }

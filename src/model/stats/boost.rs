@@ -1,6 +1,7 @@
 use crate::constants::{BOOST_PER_FRAME, SMALL_BOOST_PICKUP_AMOUNT, STARTING_BOOST_VALUE};
 use crate::model::stats::Stat;
-use crate::stat_collector::{PickupHandler, PlayerFrame, PlayerPayload};
+use crate::payload::{Payload, PayloadDataType, PlayerFrame};
+use crate::stat_collector::PickupHandler;
 use crate::util::BoostPickupEvent;
 use serde::{Deserialize, Serialize};
 use subtr_actor::PlayerId;
@@ -96,15 +97,27 @@ impl Boost {
 
 #[typetag::serde]
 impl Stat for Boost {
-    fn update(
-        &mut self,
-        player_payload: &PlayerPayload,
-        pickup_handler: &mut PickupHandler,
-        player_id: &PlayerId,
-    ) {
-        if let Some(player_frame) = player_payload.get(player_id) {
-            if let Some(boost_amount) = player_frame.boost_amount {
-                self.update_boost_amount_stats(boost_amount, player_frame, pickup_handler);
+    fn update(&mut self, payload: &mut Payload, player_id: &PlayerId) {
+        let mut pickup_handler: Option<&mut PickupHandler> = None;
+
+        for payload_data in payload.data.iter() {
+            if let PayloadDataType::Pickup(pickup_data) = payload_data {
+                pickup_handler = Some(&mut pickup_data);
+            }
+            match payload_data {
+                PayloadDataType::Pickup(pickup_data) => pickup_handler = Some(&mut pickup_data),
+                _ => None,
+            }
+        }
+
+        for payload_data in payload.data.iter() {
+            if let PayloadDataType::Player(all_player_frames) = payload_data {
+                let player_frames = all_player_frames.frames().get(player_id).unwrap();
+                let latest_frame = player_frames.iter().nth_back(1).unwrap();
+
+                if let Some(boost_amount) = latest_frame.boost_amount {
+                    //self.update_boost_amount_stats(boost_amount, latest_frame)
+                }
             }
         }
     }
