@@ -48,7 +48,7 @@ impl Boost {
         &mut self,
         boost_amount: f32,
         player_frame: &PlayerFrame,
-        pickup_handler: &mut PickupHandler,
+        pickup_handler: &PickupHandler,
     ) {
         if player_frame.boost_active {
             self.total_usage += BOOST_PER_FRAME;
@@ -98,25 +98,15 @@ impl Boost {
 #[typetag::serde]
 impl Stat for Boost {
     fn update(&mut self, payload: &mut Payload, player_id: &PlayerId) {
-        let mut pickup_handler: Option<&mut PickupHandler> = None;
-
-        for payload_data in payload.data.iter() {
-            if let PayloadDataType::Pickup(pickup_data) = payload_data {
-                pickup_handler = Some(&mut pickup_data);
-            }
-            match payload_data {
-                PayloadDataType::Pickup(pickup_data) => pickup_handler = Some(&mut pickup_data),
-                _ => None,
-            }
-        }
-
-        for payload_data in payload.data.iter() {
+        let pickup_handler = payload.data.iter().find_map(|data| match data {
+            PayloadDataType::Pickup(handler) => Some(handler),
+            _ => None,
+        });
+    
+        for payload_data in &payload.data {
             if let PayloadDataType::Player(all_player_frames) = payload_data {
-                let player_frames = all_player_frames.frames().get(player_id).unwrap();
-                let latest_frame = player_frames.iter().nth_back(1).unwrap();
-
-                if let Some(boost_amount) = latest_frame.boost_amount {
-                    //self.update_boost_amount_stats(boost_amount, latest_frame)
+                if let Some(latest_frame) = all_player_frames.frames().get(player_id).and_then(|frames| frames.iter().nth_back(0)) {
+                    pickup_handler.map(|pickup_handler| latest_frame.boost_amount.map(|boost_amount| self.update_boost_amount_stats(boost_amount, latest_frame, pickup_handler)));
                 }
             }
         }

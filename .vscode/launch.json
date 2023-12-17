@@ -1,0 +1,102 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'rl-replay-api'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=rl-replay-api"
+                ],
+                "filter": {
+                    "name": "rl-replay-api",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'rl-replay-api'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=rl-replay-api",
+                    "--package=rl-replay-api"
+                ],
+                "filter": {
+                    "name": "rl-replay-api",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'rl-replay-api'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=rl-replay-api",
+                    "--package=rl-replay-api"
+                ],
+                "filter": {
+                    "name": "rl-replay-api",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug integration test 'boost_tests'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--test=boost_tests",
+                    "--package=rl-replay-api"
+                ],
+                "filter": {
+                    "name": "boost_tests",
+                    "kind": "test"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug benchmark 'starter_benches'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bench=starter_benches",
+                    "--package=rl-replay-api"
+                ],
+                "filter": {
+                    "name": "starter_benches",
+                    "kind": "bench"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}

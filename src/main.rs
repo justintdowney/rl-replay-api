@@ -4,7 +4,7 @@ use std::env::current_dir;
 
 fn main() {
     let root = current_dir().unwrap();
-    let relative_path = RelativePath::new("gg.replay");
+    let relative_path = RelativePath::new("recent_game.replay");
     let full_path = relative_path.to_path(&root);
     println!("{:?}", full_path);
     let data = std::fs::read(full_path).unwrap();

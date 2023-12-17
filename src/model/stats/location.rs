@@ -1,7 +1,7 @@
 use crate::constants::{BACK_WALL, MAP_SIXTH, MAP_THIRD, MAP_Y};
 use crate::model::player::Team;
 use crate::model::stats::Stat;
-use crate::payload::{Payload, PlayerFrame};
+use crate::payload::{Payload, PlayerFrame, PayloadDataType};
 use crate::stat_collector::PickupHandler;
 use boxcars::RigidBody;
 use serde::{Deserialize, Serialize};
@@ -55,25 +55,31 @@ impl Location {
     }
 
     fn update_location_stats(&mut self, player_frame: &PlayerFrame) {
-        /*if let Some(player_rb) = player_frame.rigid_body {
+        if let Some(player_rb) = player_frame.rigid_body {
             if player_frame.team == Team::Zero {
                 self.update_team_stats(&player_rb);
             } else if player_frame.team == Team::One {
                 self.update_team_stats(&player_rb);
             }
-        }*/
+        }
     }
 }
 
 #[typetag::serde]
 impl Stat for Location {
     fn update(&mut self, player_payload: &mut Payload, player_id: &PlayerId) {
-        /*if let Some(player_frame) = player_payload.get(player_id) {
-            self.update_location_stats(player_frame);
+        for payload_data in &player_payload.data {
+            if let PayloadDataType::Player(all_player_frames) = payload_data {
+                if let Some(player_frames) = all_player_frames.frames().get(player_id) {
+                    if let Some(player_frame) = player_frames.iter().nth_back(0) {
+                        self.update_location_stats(player_frame);
+                    }
 
-            for (candidate_player_id, candidate_frame) in player_payload.frames.iter() {
-                if let Some(candidate_player_rb) = candidate_frame.rigid_body {}
+                    for (_candidate_player_id, _candidate_frames) in all_player_frames.frames().iter() {
+                        //
+                    }
+                }
             }
-        }*/
+        }
     }
 }

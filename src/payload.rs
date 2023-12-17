@@ -2,13 +2,14 @@ use std::collections::HashMap;
 
 use subtr_actor::{PlayerId, ReplayProcessor};
 
-use crate::{model::player::Team, stat_collector::PickupHandler};
+use crate::{model::{player::Team}, stat_collector::PickupHandler, util::BoostPad};
 
 // Define a trait for extensible payload data
 trait PayloadData {}
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct PlayerFrame {
+    pub team: Team,
     pub rigid_body: Option<boxcars::RigidBody>,
     pub boost_amount: Option<f32>,
     pub boost_active: bool,
@@ -27,6 +28,10 @@ impl PlayerFrame {
             .get_interpolated_player_rigid_body(player_id, current_time, 0.0)
             .ok();
 
+        if let Some(rb) = rigid_body {
+            
+        }
+
         let team = match processor.get_player_is_team_0(player_id).unwrap() {
             true => Team::Zero,
             false => Team::One,
@@ -39,6 +44,7 @@ impl PlayerFrame {
         let dodge_active = processor.get_dodge_active(player_id).unwrap_or(0) % 2 == 1;
 
         Self {
+            team,
             rigid_body,
             boost_amount,
             boost_active,
@@ -50,6 +56,7 @@ impl PlayerFrame {
 }
 
 // Example implementation of a payload data type
+#[derive(Debug)]
 pub struct PlayerFrameData {
     frames: HashMap<PlayerId, Vec<PlayerFrame>>,
 }
@@ -75,7 +82,7 @@ impl PlayerFrameData {
 
 impl PayloadData for PlayerFrameData {}
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub struct BallFrame {
     pub rigid_body: Option<boxcars::RigidBody>,
 }
@@ -89,6 +96,7 @@ impl BallFrame {
     }
 }
 
+#[derive(Debug)]
 pub struct BallFrameData {
     frames: Vec<BallFrame>,
 }
@@ -104,6 +112,7 @@ impl BallFrameData {
 }
 
 // Enum to represent different payload data types
+#[derive(Debug)]
 pub enum PayloadDataType<'pl> {
     Player(PlayerFrameData),
     Ball(BallFrameData),
@@ -111,18 +120,20 @@ pub enum PayloadDataType<'pl> {
 }
 
 // Payload struct containing a vector of payload data
+#[derive(Debug)]
 pub struct Payload<'pl> {
     pub data: Vec<PayloadDataType<'pl>>,
     // Add any other context-related data here
 }
 
-impl Payload<'_> {
+impl<'pl> Payload<'pl> {
     pub fn new() -> Self {
         Self { data: Vec::new() }
     }
 
-    pub fn add_data(&mut self, payload_data: PayloadDataType) {
+    pub fn add_data(&mut self, payload_data: PayloadDataType<'pl>) {
         // Result here most likely
         self.data.push(payload_data);
     }
 }
+

@@ -1,7 +1,6 @@
 use crate::{
     model::stats::{boost::Boost, Stat},
     payload::Payload,
-    stat_collector::PickupHandler,
 };
 use serde::Serialize;
 use subtr_actor::{PlayerId, ReplayProcessor};
@@ -29,7 +28,7 @@ impl PlayerData {
     }
 }
 
-#[derive(PartialEq, Serialize, Copy, Clone)]
+#[derive(Debug, PartialEq, Serialize, Copy, Clone)]
 pub enum Team {
     Zero,
     One,
@@ -62,9 +61,8 @@ impl Player {
     }
 
     pub fn update_stats(&mut self, payload: &mut Payload) {
-        self.stats
-            .iter_mut()
-            .map(|x| x.update(payload, &self.id))
-            .collect()
+        for stat in self.stats.iter_mut() {
+            stat.update(payload, &self.id);
+        }
     }
 }

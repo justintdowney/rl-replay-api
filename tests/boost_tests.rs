@@ -6,7 +6,7 @@ mod tests {
 
     #[test]
     fn detect_small_boost_pickup() {
-        let mut pickup_map = PickupHandler::new();
+        let pickup_map = PickupHandler::new();
         let rb = RigidBody {
             sleeping: false,
             location: Vector3f {
@@ -29,7 +29,7 @@ mod tests {
 
     #[test]
     fn detect_large_boost_pickup() {
-        let mut pickup_map = PickupHandler::new();
+        let pickup_map = PickupHandler::new();
         let rb = RigidBody {
             sleeping: false,
             location: Vector3f {
@@ -52,7 +52,7 @@ mod tests {
 
     #[test]
     fn detect_no_boost_pickup() {
-        let mut pickup_map = PickupHandler::new();
+        let pickup_map = PickupHandler::new();
         let rb = RigidBody {
             sleeping: false,
             location: Vector3f {
