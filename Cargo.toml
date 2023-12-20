@@ -13,7 +13,7 @@ phf = { version = "0.11.2", features = ["macros"] }
 relative-path = "1.9.0"
 serde = "1.0.188"
 serde_json = "1.0.108"
-subtr-actor = {git="https://github.com/rlrml/subtr-actor.git", branch = "works_with_spectators"}
+subtr-actor = {path = "C:/Users/jtd/repos/rust/subtr_actor-boost-support/subtr-actor/"}
 typetag = "0.2.13"
 
 [[bench]]

@@ -2,6 +2,9 @@
     "folders": [
 		{
 			"path": "."
+		},
+		{
+			"path": "../subtr_actor-boost-support/subtr-actor"
 		}
 	],
 	"launch": {

@@ -1,9 +1,8 @@
 use std::collections::HashMap;
 
-use crate::{constants::CAR_HEIGHT_ON_GROUND, payload::PayloadDataType};
 use crate::model::stats::Stat;
 use crate::payload::Payload;
-use crate::stat_collector::PickupHandler;
+use crate::{constants::CAR_HEIGHT_ON_GROUND, payload::PayloadDataType};
 use boxcars::RigidBody;
 use serde::{Deserialize, Serialize};
 use subtr_actor::PlayerId;
@@ -93,18 +92,18 @@ impl Movement {
 #[typetag::serde]
 impl Stat for Movement {
     fn update(&mut self, payload: &mut Payload, player_id: &PlayerId) {
-        for payload_data in &payload.data {
+        for payload_data in payload.data.iter() {
             if let PayloadDataType::Player(all_player_frames) = payload_data {
-                if let Some(player_frames) = all_player_frames.frames().get(player_id) {
-                    if let Some(player_frame) = player_frames.iter().nth_back(0) {
-                        if let Some(player_rb) = player_frame.rigid_body {
-                            if let Some(lin_vel) = player_rb.linear_velocity {
-                                let speed = self.calculate_speed(lin_vel);
-                                self.update_speed_stats(speed, player_frame.boost_active);
-                            }
-                            self.update_distance_stats(&player_rb);
-                            self.update_height_stats(player_rb.location.z);
-                        }
+                let player_frame = all_player_frames.frames().get(player_id).unwrap();
+
+                if let Some(player_rb) = player_frame.rigid_body {
+                    self.update_distance_stats(&player_rb);
+                    self.update_height_stats(player_rb.location.z);
+                    if let Some(lin_vel) = player_rb.linear_velocity {
+                        self.update_speed_stats(
+                            self.calculate_speed(lin_vel),
+                            player_frame.boost_active,
+                        );
                     }
                 }
             }

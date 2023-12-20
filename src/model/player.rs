@@ -28,7 +28,7 @@ impl PlayerData {
     }
 }
 
-#[derive(Debug, PartialEq, Serialize, Copy, Clone)]
+#[derive(PartialEq, Debug, Serialize, Copy, Clone)]
 pub enum Team {
     Zero,
     One,
@@ -61,8 +61,17 @@ impl Player {
     }
 
     pub fn update_stats(&mut self, payload: &mut Payload) {
-        for stat in self.stats.iter_mut() {
-            stat.update(payload, &self.id);
-        }
+        self.stats
+            .iter_mut()
+            .map(|x| x.update(payload, &self.id))
+            .collect()
+    }
+
+    pub fn reset_stats(&mut self) {
+        self.stats = vec![
+            Box::new(Boost::new()),
+            Box::new(Location::new()),
+            Box::new(Movement::new()),
+        ];
     }
 }

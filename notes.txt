@@ -1,2 +1,0 @@
-The stats shouldn't return payload information, the processor should check while checking player frames if boost was picked up and indicate that to the player stats through the payload
-issues with the above approach: Then what is the point of passing the pickuphandler to them
